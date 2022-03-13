@@ -1,0 +1,28 @@
+{
+  "name": "create-stylish-app",
+  "version": "0.1.0",
+  "description": "Create Stylish JavaScript web app",
+  "author": "StyleList94",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/StyleList94/create-stylish-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/StyleList94/create-stylish-app/issues"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^9.0.0",
+    "cross-spawn": "^7.0.3"
+  },
+  "files": [
+    "index.js"
+  ],
+  "bin": {
+    "create-stylish-app": "./index.js"
+  }
+}
