@@ -65,7 +65,9 @@ function getStartScript(template) {
     case 'react':
       return 'yarn start';
     case 'next':
+    case 'vanilla':
       return 'yarn dev';
+
     default:
       return '';
   }
@@ -138,11 +140,7 @@ function init() {
     .version(packageJson.version, '-v, --version')
     .arguments('[app-name]')
     .usage('<app-name> [options]')
-    .option(
-      '-t, --template [react, next]',
-      'template name(default: react)',
-      'react'
-    )
+    .option('-t, --template [react, next, vanilla]', 'template name', 'react')
     .action((name) => {
       appName = name;
     })
