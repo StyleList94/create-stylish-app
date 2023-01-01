@@ -7,6 +7,7 @@ Create a new Stylish JavaScript web app.
 - [Stylish React App](https://github.com/StyleList94/stylish-react-app): `react`
 - [Stylish Next App](https://github.com/StyleList94/stylish-next-app): `next`
 - [Stylish Vanilla App](https://github.com/StyleList94/stylish-vanilla-app): `vanilla`
+- [Stylish Web App](https://github.com/StyleList94/stylish-web-app): `web`
 
 ## Getting Started
 
@@ -26,7 +27,7 @@ yarn create stylish-app <app-name> [--template template-name]
 
 `create-stylish-app` supports the following options:
 
-- -t, --template [template-name] - The template to use. You can use the following templates `react`, `next`, `vanilla`. Default: `react`
+- -t, --template [template-name] - The template to use. You can use the following templates `react`, `next`, `vanilla`, `web`. Default: `react`
 
 ## Example
 

@@ -140,7 +140,7 @@ function init() {
     .version(packageJson.version, '-v, --version')
     .arguments('[app-name]')
     .usage('<app-name> [options]')
-    .option('-t, --template [react, next, vanilla]', 'template name', 'react')
+    .option('-t, --template [react, next, vanilla, web]', 'template name', 'react')
     .action((name) => {
       appName = name;
     })
