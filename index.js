@@ -13,13 +13,18 @@ const packageJson = require('./package.json');
 function checkForValidTemplate(template) {
   return new Promise((resolve, reject) => {
     https
-      .get(`https://github.com/StyleList94/stylish-${template}-app`, (res) => {
-        if (res.statusCode === 200) {
-          resolve(true);
-        } else {
-          resolve(false);
+      .get(
+        `https://github.com/StyleList94/stylish-${template}-${
+          template === 'ethereum' ? 'd' : ''
+        }app`,
+        (res) => {
+          if (res.statusCode === 200) {
+            resolve(true);
+          } else {
+            resolve(false);
+          }
         }
-      })
+      )
       .on('error', (e) => {
         reject(e);
       });
@@ -63,9 +68,11 @@ function buildPackageJson(packageJsonPath, appName) {
 function getStartScript(template) {
   switch (template) {
     case 'react':
-      return 'yarn start';
     case 'next':
     case 'vanilla':
+    case 'ethereum':
+    case 'web':
+    case 'pure-react':
       return 'yarn dev';
 
     default:
@@ -91,7 +98,9 @@ async function run(appName, template) {
 
   const cwd = process.cwd();
   const appPath = path.join(cwd, appName);
-  const repository = `https://github.com/StyleList94/stylish-${template}-app.git`;
+  const repository = `https://github.com/StyleList94/stylish-${template}-${
+    template === 'ethereum' ? 'd' : ''
+  }app.git`;
 
   console.log(`Creating a new ${chalk.cyan(`stylish-${template}-app`)}`);
   console.log(`in ${chalk.green(appPath)}\n`);
@@ -111,10 +120,12 @@ async function run(appName, template) {
   process.chdir(appPath);
   buildPackageJson(path.resolve(process.cwd(), 'package.json'), appName);
 
-  console.log(
-    `\nInstalling packages. This might take a couple of minutes...\n`
-  );
-  execCommand('yarn', ['install']);
+  if (template !== 'react') {
+    console.log(
+      `\nInstalling packages. This might take a couple of minutes...\n`
+    );
+    execCommand('yarn', ['install']);
+  }
 
   console.log(`\nInitializing git...\n`);
   execCommand('npx', ['rimraf', './.git'], { silent: true });
@@ -126,6 +137,9 @@ async function run(appName, template) {
   console.log(`All done.\n`);
   console.log('Run the following commands to get started:\n');
   console.log(`  ${chalk.cyan('cd')} ${appName}`);
+  if (template === 'react') {
+    console.log(`  ${chalk.cyan('yarn')} install`);
+  }
   console.log(`  ${chalk.cyan(getStartScript(template))}`);
   console.log();
 }
@@ -140,7 +154,11 @@ function init() {
     .version(packageJson.version, '-v, --version')
     .arguments('[app-name]')
     .usage('<app-name> [options]')
-    .option('-t, --template [react, next, vanilla, web]', 'template name', 'react')
+    .option(
+      '-t, --template [next, ethereum, react, pure-react, vanilla, web]',
+      'template name',
+      'next'
+    )
     .action((name) => {
       appName = name;
     })
