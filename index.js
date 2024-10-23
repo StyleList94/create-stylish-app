@@ -153,7 +153,14 @@ async function run(appName, packageInfo, template) {
   execCommand(packageManager, ['install']);
 
   console.log(`\nInitializing git...\n`);
-  execCommand('npx', ['rimraf', './.git'], { silent: true });
+  let executeModule = 'npx';
+  const removeCommandArgs = ['rimraf', './.git'];
+  const isExecFromPnpm = packageManager === 'pnpm';
+  if (isExecFromPnpm) {
+    executeModule = 'pnpm';
+    removeCommandArgs.unshift('dlx');
+  }
+  execCommand(executeModule, removeCommandArgs, { silent: true });
   execCommand('git', ['init'], { silent: true });
   execCommand('git', ['add', '.'], { silent: true });
   execCommand('git', ['commit', '-m', 'initial commit'], { silent: true });
