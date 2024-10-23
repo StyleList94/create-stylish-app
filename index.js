@@ -165,7 +165,7 @@ async function run(appName, packageInfo, template) {
 
   console.log(`\nInitializing git...\n`);
 
-  execCommand(executeModule, removeCommandArgs, { silent: true });
+  execCommand(executeModule, removeGitArgs, { silent: true });
   execCommand('git', ['init'], { silent: true });
   execCommand('git', ['add', '.'], { silent: true });
   execCommand('git', ['commit', '-m', 'initial commit'], { silent: true });
