@@ -145,21 +145,26 @@ async function run(appName, packageInfo, template) {
 
   const packageManager = getPackageManager();
 
+  let executeModule = 'npx';
+  const removeLockfileArgs = ['rimraf', './yarn.lock'];
+  const removeGitArgs = ['rimraf', './.git'];
+
+  const isExecFromPnpm = packageManager === 'pnpm';
+  if (isExecFromPnpm) {
+    executeModule = 'pnpm';
+    removeLockfileArgs.unshift('dlx');
+    removeGitArgs.unshift('dlx');
+  }
+
   if (packageManager !== 'yarn') {
-    execCommand('npx', ['rimraf', './yarn.lock'], { silent: true });
+    execCommand(executeModule, removeLockfileArgs, { silent: true });
   }
 
   console.log(`Run ${chalk.cyan.italic(`${packageManager} install`)}...\n`);
   execCommand(packageManager, ['install']);
 
   console.log(`\nInitializing git...\n`);
-  let executeModule = 'npx';
-  const removeCommandArgs = ['rimraf', './.git'];
-  const isExecFromPnpm = packageManager === 'pnpm';
-  if (isExecFromPnpm) {
-    executeModule = 'pnpm';
-    removeCommandArgs.unshift('dlx');
-  }
+
   execCommand(executeModule, removeCommandArgs, { silent: true });
   execCommand('git', ['init'], { silent: true });
   execCommand('git', ['add', '.'], { silent: true });
