@@ -13,23 +13,22 @@ Create a new Stylish JavaScript web app.
 
 ## Getting Started
 
-### Using npx
-
 ```bash
+# npm
 npx create-stylish-app <app-name> [--template template-name]
-```
 
-### Using yarn
-
-```bash
+# yarn
 yarn create stylish-app <app-name> [--template template-name]
+
+# pnpm
+pnpm create stylish-app <app-name> [--template template-name]
 ```
 
 ## Options
 
 `create-stylish-app` supports the following options:
 
-- -t, --template [template-name] - The template to use. You can use the following templates `next`, `ethereum`, `react`, `pure-react`, `vanilla`, `web`. Default: `next`
+- -t, --template [template-name] - The template to use. You can use the following templates `next`, `ethereum`, `react`, `pure-react`, `vanilla`, `web`. default: `next`
 
 ## Example
 
