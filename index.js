@@ -9,6 +9,23 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { sync } from 'cross-spawn';
 
+const getRepository = (template) => {
+  const repositoryAliasMap = {
+    react: 'react-app',
+    next: 'next-app',
+    vanilla: 'vanilla-app',
+    ethereum: 'ethereum-dapp',
+    web: 'web-app',
+    'pure-react': 'pure-react-app',
+    extension: 'extension',
+  };
+
+  if (!repositoryAliasMap[template]) {
+    throw new Error(`Template ${template} is not valid`);
+  }
+  return `https://github.com/StyleList94/stylish-${repositoryAliasMap[template]}`;
+};
+
 function getPackageManager() {
   const userAgent = process.env.npm_config_user_agent || '';
 
@@ -29,18 +46,14 @@ function getPackageManager() {
 
 function checkForValidTemplate(template) {
   return new Promise((resolve, reject) => {
-    get(
-      `https://github.com/StyleList94/stylish-${template}-${
-        template === 'ethereum' ? 'd' : ''
-      }app`,
-      (res) => {
-        if (res.statusCode === 200) {
-          resolve(true);
-        } else {
-          resolve(false);
-        }
+    const repository = getRepository(template);
+    get(repository, (res) => {
+      if (res.statusCode === 200) {
+        resolve(true);
+      } else {
+        resolve(false);
       }
-    ).on('error', (e) => {
+    }).on('error', (e) => {
       reject(e);
     });
   });
@@ -91,33 +104,35 @@ function getStartScript(template) {
     case 'web':
     case 'pure-react':
       return `${packageManager} run dev`;
-
+    case 'extension':
+      return `${packageManager} run build`;
     default:
       return '';
   }
 }
 
 async function run(appName, packageInfo, template) {
+  function printInvalidTemplateMessage(template, packageInfo) {
+    console.error(`Template ${chalk.bold(template)} is not valid`);
+    console.log();
+    console.log(
+      `Run ${chalk.cyan(`${packageInfo.name} --help`)} to see all options.`
+    );
+    process.exit(1);
+  }
+
   try {
     const isValidTemplate = await checkForValidTemplate(template);
     if (!isValidTemplate) {
-      console.error(`Template ${chalk.bold(template)} is not valid`);
-      console.log();
-      console.log(
-        `Run ${chalk.cyan(`${packageInfo.name} --help`)} to see all options.`
-      );
-      process.exit(1);
+      printInvalidTemplateMessage(template, packageInfo);
     }
   } catch (error) {
-    console.log(error);
-    process.exit(1);
+    printInvalidTemplateMessage(template, packageInfo);
   }
 
   const cwd = process.cwd();
   const appPath = join(cwd, appName);
-  const repository = `https://github.com/StyleList94/stylish-${template}-${
-    template === 'ethereum' ? 'd' : ''
-  }app.git`;
+  const repository = `${getRepository(template)}.git`;
 
   console.log(`\nCreating a new ${chalk.cyan(`stylish-${template}-app`)}`);
   console.log(`in ${chalk.green(appPath)}\n`);
@@ -146,7 +161,7 @@ async function run(appName, packageInfo, template) {
   const packageManager = getPackageManager();
 
   let executeModule = 'npx';
-  const removeLockfileArgs = ['rimraf', './yarn.lock'];
+  const removeLockfileArgs = ['rimraf', './pnpm-lock.yaml'];
   const removeGitArgs = ['rimraf', './.git'];
 
   const isExecFromPnpm = packageManager === 'pnpm';
@@ -156,7 +171,7 @@ async function run(appName, packageInfo, template) {
     removeGitArgs.unshift('dlx');
   }
 
-  if (packageManager !== 'yarn') {
+  if (packageManager !== 'pnpm') {
     execCommand(executeModule, removeLockfileArgs, { silent: true });
   }
 
@@ -193,7 +208,7 @@ function init() {
     .arguments('[app-name]')
     .usage('<app-name> [options]')
     .option(
-      '-t, --template [next, ethereum, react, pure-react, vanilla, web]',
+      '-t, --template [next, ethereum, react, extension, pure-react, vanilla, web]',
       'template name',
       'next'
     )
