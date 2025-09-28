@@ -122,7 +122,7 @@ function getStartScript(template) {
   }
 }
 
-async function run(appName, packageInfo, template) {
+async function validateTemplate(template, packageInfo) {
   function printInvalidTemplateMessage(template, packageInfo) {
     logError(`Template ${chalk.bold(template)} is not valid`);
     console.log();
@@ -140,16 +140,18 @@ async function run(appName, packageInfo, template) {
   } catch (error) {
     printInvalidTemplateMessage(template, packageInfo);
   }
+}
 
+function createProjectDirectory(appName, template) {
   const cwd = process.cwd();
   const appPath = join(cwd, appName);
-  const repository = `${getRepository(template)}.git`;
 
   logInfo(
     `Creating a new ${chalk.cyan(`stylish-${template}-app`)} in ${chalk.green(
       appPath
     )}`
   );
+
   try {
     mkdirSync(appPath);
   } catch (error) {
@@ -164,6 +166,14 @@ async function run(appName, packageInfo, template) {
     }
     process.exit(1);
   }
+
+  return appPath;
+}
+
+function cloneRepository(appName, template) {
+  const appPath = createProjectDirectory(appName, template);
+  const repository = `${getRepository(template)}.git`;
+
   logProcess('Cloning repository...');
   execCommand('git', ['clone', '--depth=1', repository, appName], {
     silent: true,
@@ -171,18 +181,18 @@ async function run(appName, packageInfo, template) {
   process.chdir(appPath);
   buildPackageJson(_resolve(process.cwd(), 'package.json'), appName);
   logSuccess('Repository cloned successfully!');
+}
 
+function installDependencies() {
   const packageManager = getPackageManager();
 
   let executeModule = 'npx';
   const removeLockfileArgs = ['rimraf', './pnpm-lock.yaml'];
-  const removeGitArgs = ['rimraf', './.git'];
 
   const isExecFromPnpm = packageManager === 'pnpm';
   if (isExecFromPnpm) {
     executeModule = 'pnpm';
     removeLockfileArgs.unshift('dlx');
-    removeGitArgs.unshift('dlx');
   }
 
   if (packageManager !== 'pnpm') {
@@ -193,20 +203,44 @@ async function run(appName, packageInfo, template) {
     `Installing dependencies with ${chalk.cyan.italic(packageManager)}...`
   );
   execCommand(packageManager, ['install']);
+}
 
-  logProcess('\nInitializing git repository...');
+function initializeGitRepository() {
+  const packageManager = getPackageManager();
+  let executeModule = 'npx';
+  const removeGitArgs = ['rimraf', './.git'];
+
+  const isExecFromPnpm = packageManager === 'pnpm';
+  if (isExecFromPnpm) {
+    executeModule = 'pnpm';
+    removeGitArgs.unshift('dlx');
+  }
+
+  console.log();
+  logProcess('Initializing git repository...');
 
   execCommand(executeModule, removeGitArgs, { silent: true });
   execCommand('git', ['init'], { silent: true });
   execCommand('git', ['add', '.'], { silent: true });
   execCommand('git', ['commit', '-m', 'initial commit'], { silent: true });
   execCommand('git', ['branch', '-m', 'main'], { silent: true });
+}
 
+function showCompletionMessage(appName, template) {
   logSuccess('All Done!');
   console.log('\nRun the following commands to get started:');
   console.log(`  ${chalk.cyan('cd')} ${appName}`);
   console.log(`  ${chalk.cyan(getStartScript(template))}`);
   console.log();
+}
+
+async function run(appName, packageInfo, template) {
+  await validateTemplate(template, packageInfo);
+
+  cloneRepository(appName, template);
+  installDependencies();
+  initializeGitRepository();
+  showCompletionMessage(appName, template);
 }
 
 function init() {
