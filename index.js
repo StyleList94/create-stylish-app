@@ -9,6 +9,17 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { sync } from 'cross-spawn';
 
+const logInfo = (message) =>
+  console.log(`${chalk.bgBlue.white.bold('  INFO   ')} ${message}`);
+const logProcess = (message) =>
+  console.log(`${chalk.bgYellow.black.bold(' PROCESS ')} ${message}`);
+const logSuccess = (message) =>
+  console.log(`${chalk.bgGreen.white.bold(' SUCCESS ')} ${message}`);
+const logWarning = (message) =>
+  console.log(`${chalk.bgYellow.black.bold(' WARNING ')} ${message}`);
+const logError = (message) =>
+  console.log(`${chalk.bgRed.white.bold('  ERROR  ')} ${message}`);
+
 const getRepository = (template) => {
   const repositoryAliasMap = {
     react: 'react-app',
@@ -65,7 +76,7 @@ function execCommand(command, args, options = { silent: false }) {
   });
 
   if (result.status !== 0) {
-    console.error(`${chalk.red('Command failed:')} ${command}`);
+    logError(`Command failed: ${command}`);
     process.exit(1);
   }
 }
@@ -88,7 +99,7 @@ function buildPackageJson(packageJsonPath, appName) {
       'utf8'
     );
   } catch (error) {
-    console.log('Run command failed:', error);
+    logError(`Run command failed: ${error}`);
     process.exit(1);
   }
 }
@@ -113,7 +124,7 @@ function getStartScript(template) {
 
 async function run(appName, packageInfo, template) {
   function printInvalidTemplateMessage(template, packageInfo) {
-    console.error(`Template ${chalk.bold(template)} is not valid`);
+    logError(`Template ${chalk.bold(template)} is not valid`);
     console.log();
     console.log(
       `Run ${chalk.cyan(`${packageInfo.name} --help`)} to see all options.`
@@ -134,29 +145,32 @@ async function run(appName, packageInfo, template) {
   const appPath = join(cwd, appName);
   const repository = `${getRepository(template)}.git`;
 
-  console.log(`\nCreating a new ${chalk.cyan(`stylish-${template}-app`)}`);
-  console.log(`in ${chalk.green(appPath)}\n`);
+  logInfo(
+    `Creating a new ${chalk.cyan(`stylish-${template}-app`)} in ${chalk.green(
+      appPath
+    )}`
+  );
   try {
     mkdirSync(appPath);
   } catch (error) {
     if (error.code === 'EEXIST') {
-      console.log(
-        `${chalk.bgRed('Error!')}\nThe app name ${chalk.bold(
+      logError(
+        `The app name ${chalk.bold(
           appName
-        )} is already exist in the current directory, please change app name.\n`
+        )} already exists in the current directory, please change app name.`
       );
     } else {
-      console.log(error);
+      logError(`${error}`);
     }
     process.exit(1);
   }
-  process.stdout.write(`\nClone repository...`);
+  logProcess('Cloning repository...');
   execCommand('git', ['clone', '--depth=1', repository, appName], {
     silent: true,
   });
   process.chdir(appPath);
   buildPackageJson(_resolve(process.cwd(), 'package.json'), appName);
-  console.log(` Done!\n`);
+  logSuccess('Repository cloned successfully!');
 
   const packageManager = getPackageManager();
 
@@ -175,10 +189,12 @@ async function run(appName, packageInfo, template) {
     execCommand(executeModule, removeLockfileArgs, { silent: true });
   }
 
-  console.log(`Run ${chalk.cyan.italic(`${packageManager} install`)}...\n`);
+  logProcess(
+    `Installing dependencies with ${chalk.cyan.italic(packageManager)}...`
+  );
   execCommand(packageManager, ['install']);
 
-  console.log(`\nInitializing git...\n`);
+  logProcess('\nInitializing git repository...');
 
   execCommand(executeModule, removeGitArgs, { silent: true });
   execCommand('git', ['init'], { silent: true });
@@ -186,8 +202,8 @@ async function run(appName, packageInfo, template) {
   execCommand('git', ['commit', '-m', 'initial commit'], { silent: true });
   execCommand('git', ['branch', '-m', 'main'], { silent: true });
 
-  console.log(`\nAll Done!\n`);
-  console.log('Run the following commands to get started:\n');
+  logSuccess('All Done!');
+  console.log('\nRun the following commands to get started:');
   console.log(`  ${chalk.cyan('cd')} ${appName}`);
   console.log(`  ${chalk.cyan(getStartScript(template))}`);
   console.log();
