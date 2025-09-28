@@ -7,10 +7,8 @@ Create a new Stylish JavaScript web app.
 - [Next.js App](https://github.com/StyleList94/stylish-next-app): `next`
 - [Ethereum DApp](https://github.com/StyleList94/stylish-ethereum-dapp): `ethereum`
 - [React App](https://github.com/StyleList94/stylish-react-app): `react`
+- [Astro App](https://github.com/StyleList94/stylish-astro-app): `astro`
 - [Chrome Extensions](https://github.com/StyleList94/stylish-extension): `extension`
-- [Pure(Webpack) React App](https://github.com/StyleList94/stylish-pure-react-app): `pure-react`
-- [Vanilla App](https://github.com/StyleList94/stylish-vanilla-app): `vanilla`
-- [Web App](https://github.com/StyleList94/stylish-web-app): `web`
 
 ## Getting Started
 
@@ -29,14 +27,14 @@ yarn create stylish-app <app-name> [--template template-name]
 
 `create-stylish-app` supports the following options:
 
-- -t, --template [template-name] - The template to use. You can use the following templates `next`, `ethereum`, `react`, `extension`, `pure-react`, `vanilla`, `web`. default: `next`
+- -t, --template [template-name] - The template to use. You can use the following templates `next`, `ethereum`, `react`, `astro`, `extension`. default: `next`
 
 ## Example
 
 ```bash
 # using default(next) template
-npx create-stylish-app my-app
+pnpm create stylish-app my-app
 
 # using react template
-npx create-stylish-app my-app --template react
+pnpm create stylish-app my-app --template react
 ```
