@@ -24,10 +24,8 @@ const getRepository = (template) => {
   const repositoryAliasMap = {
     react: 'react-app',
     next: 'next-app',
-    vanilla: 'vanilla-app',
     ethereum: 'ethereum-dapp',
-    web: 'web-app',
-    'pure-react': 'pure-react-app',
+    astro: 'astro-app',
     extension: 'extension',
   };
 
@@ -110,10 +108,8 @@ function getStartScript(template) {
   switch (template) {
     case 'react':
     case 'next':
-    case 'vanilla':
     case 'ethereum':
-    case 'web':
-    case 'pure-react':
+    case 'astro':
       return `${packageManager} run dev`;
     case 'extension':
       return `${packageManager} run build`;
@@ -258,7 +254,7 @@ function init() {
     .arguments('[app-name]')
     .usage('<app-name> [options]')
     .option(
-      '-t, --template [next, ethereum, react, extension, pure-react, vanilla, web]',
+      '-t, --template [next, ethereum, react, astro, extension]',
       'template name',
       'next'
     )
