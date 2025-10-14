@@ -8,21 +8,19 @@ import { get } from 'node:https';
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { sync } from 'cross-spawn';
+import ora from 'ora';
 
-const createLogger = (bgColor, fgColor) => (label) => (message) =>
-  console.log(`${chalk[bgColor][fgColor].bold(label)} ${message}`);
+const createLog = (tag) => (message) => console.log(`${tag} ${message}`);
 
-const styles = {
-  blueWhite: ['bgBlue', 'white'],
-  yellowBlack: ['bgYellow', 'black'],
-  greenWhite: ['bgGreen', 'white'],
-  redWhite: ['bgRed', 'white'],
+const TAGS = {
+  INFO: chalk.bgMagentaBright.black.bold('  INFO   '),
+  PROCESS: chalk.bgYellow.black.bold(' PROCESS '),
+  SUCCESS: chalk.bgGreen.white.bold(' SUCCESS '),
+  ERROR: chalk.bgRed.white.bold('  ERROR  '),
 };
 
-const logInfo = createLogger(...styles.blueWhite)('  INFO   ');
-const logProcess = createLogger(...styles.yellowBlack)(' PROCESS ');
-const logSuccess = createLogger(...styles.greenWhite)(' SUCCESS ');
-const logError = createLogger(...styles.redWhite)('  ERROR  ');
+const logInfo = createLog(TAGS.INFO);
+const logError = createLog(TAGS.ERROR);
 
 const getRepository = (template) => {
   const repositoryAliasMap = {
@@ -124,7 +122,7 @@ function getStartScript(template) {
 
 async function validateTemplate(template, packageInfo) {
   function printInvalidTemplateMessage(template, packageInfo) {
-    logError(`Template ${chalk.bold(template)} is not valid`);
+    logError(`Template "${template}" not found`);
     console.log();
     console.log(
       `Run ${chalk.cyan(`${packageInfo.name} --help`)} to see all options.`
@@ -147,7 +145,7 @@ function createProjectDirectory(appName, template) {
   const appPath = join(cwd, appName);
 
   logInfo(
-    `Creating a new ${chalk.cyan(`stylish-${template}-app`)} in ${chalk.green(
+    `Creating ${chalk.cyan(`stylish-${template}-app`)} in ${chalk.green(
       appPath
     )}`
   );
@@ -156,11 +154,7 @@ function createProjectDirectory(appName, template) {
     mkdirSync(appPath);
   } catch (error) {
     if (error.code === 'EEXIST') {
-      logError(
-        `The app name ${chalk.bold(
-          appName
-        )} already exists in the current directory, please change app name.`
-      );
+      logError(`Directory "${appName}" already exists`);
     } else {
       logError(`${error}`);
     }
@@ -174,13 +168,24 @@ function cloneRepository(appName, template) {
   const appPath = createProjectDirectory(appName, template);
   const repository = `${getRepository(template)}.git`;
 
-  logProcess('Cloning repository...');
-  execCommand('git', ['clone', '--depth=1', repository, appName], {
-    silent: true,
-  });
-  process.chdir(appPath);
-  buildPackageJson(_resolve(process.cwd(), 'package.json'), appName);
-  logSuccess('Repository cloned successfully!');
+  const spinner = ora({
+    text: 'Cloning template...',
+    prefixText: TAGS.PROCESS,
+  }).start();
+
+  try {
+    execCommand('git', ['clone', '--depth=1', repository, appName], {
+      silent: true,
+    });
+    process.chdir(appPath);
+    buildPackageJson(_resolve(process.cwd(), 'package.json'), appName);
+    spinner.prefixText = TAGS.SUCCESS;
+    spinner.succeed('Cloned template');
+  } catch (error) {
+    spinner.prefixText = TAGS.ERROR;
+    spinner.fail('Failed to clone template');
+    throw error;
+  }
 }
 
 function installDependencies() {
@@ -199,10 +204,28 @@ function installDependencies() {
     execCommand(executeModule, removeLockfileArgs, { silent: true });
   }
 
-  logProcess(
-    `Installing dependencies with ${chalk.cyan.italic(packageManager)}...`
-  );
-  execCommand(packageManager, ['install']);
+  const spinner = ora({
+    text: 'Installing dependencies...',
+    prefixText: TAGS.PROCESS,
+    discardStdin: false,
+  }).start();
+
+  try {
+    console.log();
+    execCommand(packageManager, ['install']);
+    spinner.stopAndPersist({
+      symbol: chalk.green('✔'),
+      prefixText: TAGS.SUCCESS,
+      text: 'Installed dependencies',
+    });
+  } catch (error) {
+    spinner.stopAndPersist({
+      symbol: chalk.red('✖'),
+      prefixText: TAGS.ERROR,
+      text: 'Failed to install dependencies',
+    });
+    throw error;
+  }
 }
 
 function initializeGitRepository() {
@@ -216,21 +239,37 @@ function initializeGitRepository() {
     removeGitArgs.unshift('dlx');
   }
 
-  console.log();
-  logProcess('Initializing git repository...');
+  const spinner = ora({
+    text: 'Initializing repository...',
+    prefixText: TAGS.PROCESS,
+  }).start();
 
-  execCommand(executeModule, removeGitArgs, { silent: true });
-  execCommand('git', ['init'], { silent: true });
-  execCommand('git', ['add', '.'], { silent: true });
-  execCommand('git', ['commit', '-m', 'initial commit'], { silent: true });
-  execCommand('git', ['branch', '-m', 'main'], { silent: true });
+  try {
+    execCommand(executeModule, removeGitArgs, { silent: true });
+    execCommand('git', ['init'], { silent: true });
+    execCommand('git', ['add', '.'], { silent: true });
+    execCommand('git', ['commit', '-m', 'initial commit'], { silent: true });
+    execCommand('git', ['branch', '-m', 'main'], { silent: true });
+    spinner.prefixText = TAGS.SUCCESS;
+    spinner.succeed('Initialized repository');
+  } catch (error) {
+    spinner.prefixText = TAGS.ERROR;
+    spinner.fail('Failed to initialize repository');
+    throw error;
+  }
 }
 
 function showCompletionMessage(appName, template) {
-  logSuccess('All Done!');
-  console.log('\nRun the following commands to get started:');
-  console.log(`  ${chalk.cyan('cd')} ${appName}`);
-  console.log(`  ${chalk.cyan(getStartScript(template))}`);
+  console.log();
+  console.log(
+    `${chalk.green.bold('  ✨ Success!')}${chalk.white(
+      ' Your stylish app is ready'
+    )}`
+  );
+  console.log();
+  console.log(chalk.gray('  Next steps:'));
+  console.log(chalk.cyan(`    cd ${appName}`));
+  console.log(chalk.cyan(`    ${getStartScript(template)}`));
   console.log();
 }
 
@@ -269,7 +308,7 @@ function init() {
     .parse(process.argv);
 
   if (typeof appName === 'undefined') {
-    console.error('Please specify the project directory:');
+    console.error('Please specify a project name:');
     console.log(`  ${chalk.cyan(program.name())} ${chalk.green('<app-name>')}`);
     console.log();
     console.log('For example:');
