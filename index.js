@@ -9,16 +9,20 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { sync } from 'cross-spawn';
 
-const logInfo = (message) =>
-  console.log(`${chalk.bgBlue.white.bold('  INFO   ')} ${message}`);
-const logProcess = (message) =>
-  console.log(`${chalk.bgYellow.black.bold(' PROCESS ')} ${message}`);
-const logSuccess = (message) =>
-  console.log(`${chalk.bgGreen.white.bold(' SUCCESS ')} ${message}`);
-const logWarning = (message) =>
-  console.log(`${chalk.bgYellow.black.bold(' WARNING ')} ${message}`);
-const logError = (message) =>
-  console.log(`${chalk.bgRed.white.bold('  ERROR  ')} ${message}`);
+const createLogger = (bgColor, fgColor) => (label) => (message) =>
+  console.log(`${chalk[bgColor][fgColor].bold(label)} ${message}`);
+
+const styles = {
+  blueWhite: ['bgBlue', 'white'],
+  yellowBlack: ['bgYellow', 'black'],
+  greenWhite: ['bgGreen', 'white'],
+  redWhite: ['bgRed', 'white'],
+};
+
+const logInfo = createLogger(...styles.blueWhite)('  INFO   ');
+const logProcess = createLogger(...styles.yellowBlack)(' PROCESS ');
+const logSuccess = createLogger(...styles.greenWhite)(' SUCCESS ');
+const logError = createLogger(...styles.redWhite)('  ERROR  ');
 
 const getRepository = (template) => {
   const repositoryAliasMap = {
