@@ -3,12 +3,16 @@
 'use strict';
 
 import { resolve as _resolve, join } from 'node:path';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { get } from 'node:https';
+import { readFileSync, writeFileSync, mkdirSync, createWriteStream } from 'node:fs';
+import { unlink } from 'node:fs/promises';
+import { pipeline } from 'node:stream/promises';
+import { Readable } from 'node:stream';
+import { tmpdir } from 'node:os';
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { sync } from 'cross-spawn';
 import ora from 'ora';
+import { x as tarExtract } from 'tar';
 
 const createLog = (tag) => (message) => console.log(`${tag} ${message}`);
 
@@ -22,20 +26,21 @@ const TAGS = {
 const logInfo = createLog(TAGS.INFO);
 const logError = createLog(TAGS.ERROR);
 
-const getRepository = (template) => {
-  const repositoryAliasMap = {
-    react: 'react-app',
-    next: 'next-app',
-    ethereum: 'ethereum-dapp',
-    astro: 'astro-app',
-    extension: 'extension',
-  };
-
-  if (!repositoryAliasMap[template]) {
-    throw new Error(`Template ${template} is not valid`);
-  }
-  return `https://github.com/StyleList94/stylish-${repositoryAliasMap[template]}`;
+const TEMPLATE_MAP = {
+  next: 'next-app',
+  react: 'react-app',
+  ethereum: 'ethereum-dapp',
+  astro: 'astro-app',
+  extension: 'extension',
+  ui: 'ui-kit',
 };
+
+const TARBALL_URL =
+  'https://codeload.github.com/StyleList94/stylish-app-kit/tar.gz/main';
+
+function isValidTemplate(template) {
+  return template in TEMPLATE_MAP;
+}
 
 function getPackageManager() {
   const userAgent = process.env.npm_config_user_agent || '';
@@ -53,21 +58,6 @@ function getPackageManager() {
   }
 
   return 'npm';
-}
-
-function checkForValidTemplate(template) {
-  return new Promise((resolve, reject) => {
-    const repository = getRepository(template);
-    get(repository, (res) => {
-      if (res.statusCode === 200) {
-        resolve(true);
-      } else {
-        resolve(false);
-      }
-    }).on('error', (e) => {
-      reject(e);
-    });
-  });
 }
 
 function execCommand(command, args, options = { silent: false }) {
@@ -112,6 +102,7 @@ function getStartScript(template) {
     case 'next':
     case 'ethereum':
     case 'astro':
+    case 'ui':
       return `${packageManager} run dev`;
     case 'extension':
       return `${packageManager} run build`;
@@ -120,23 +111,14 @@ function getStartScript(template) {
   }
 }
 
-async function validateTemplate(template, packageInfo) {
-  function printInvalidTemplateMessage(template, packageInfo) {
+function validateTemplate(template, packageInfo) {
+  if (!isValidTemplate(template)) {
     logError(`Template "${template}" not found`);
     console.log();
     console.log(
       `Run ${chalk.cyan(`${packageInfo.name} --help`)} to see all options.`
     );
     process.exit(1);
-  }
-
-  try {
-    const isValidTemplate = await checkForValidTemplate(template);
-    if (!isValidTemplate) {
-      printInvalidTemplateMessage(template, packageInfo);
-    }
-  } catch (error) {
-    printInvalidTemplateMessage(template, packageInfo);
   }
 }
 
@@ -164,27 +146,59 @@ function createProjectDirectory(appName, template) {
   return appPath;
 }
 
-function cloneRepository(appName, template) {
+async function downloadTarball() {
+  const tempFile = join(tmpdir(), `stylish-template-${Date.now()}.tar.gz`);
+
+  const response = await fetch(TARBALL_URL);
+  if (!response.ok) {
+    throw new Error(`Failed to download template: ${response.statusText}`);
+  }
+
+  await pipeline(Readable.fromWeb(response.body), createWriteStream(tempFile));
+
+  return tempFile;
+}
+
+async function extractTemplate(tarFile, template, destPath) {
+  const templateDir = TEMPLATE_MAP[template];
+  const prefix = `stylish-app-kit-main/templates/${templateDir}/`;
+
+  await tarExtract({
+    file: tarFile,
+    cwd: destPath,
+    strip: 3,
+    filter: (path) => path.startsWith(prefix),
+  });
+}
+
+async function downloadAndExtractTemplate(appName, template) {
   const appPath = createProjectDirectory(appName, template);
-  const repository = `${getRepository(template)}.git`;
 
   const spinner = ora({
-    text: 'Cloning template...',
+    text: 'Downloading template...',
     prefixText: TAGS.PROCESS,
   }).start();
 
+  let tarFile;
+
   try {
-    execCommand('git', ['clone', '--depth=1', repository, appName], {
-      silent: true,
-    });
+    tarFile = await downloadTarball();
+    spinner.text = 'Extracting template...';
+    await extractTemplate(tarFile, template, appPath);
+
     process.chdir(appPath);
     buildPackageJson(_resolve(process.cwd(), 'package.json'), appName);
+
     spinner.prefixText = TAGS.SUCCESS;
-    spinner.succeed('Cloned template');
+    spinner.succeed('Downloaded template');
   } catch (error) {
     spinner.prefixText = TAGS.ERROR;
-    spinner.fail('Failed to clone template');
+    spinner.fail('Failed to download template');
     throw error;
+  } finally {
+    if (tarFile) {
+      await unlink(tarFile).catch(() => {});
+    }
   }
 }
 
@@ -229,23 +243,12 @@ function installDependencies() {
 }
 
 function initializeGitRepository() {
-  const packageManager = getPackageManager();
-  let executeModule = 'npx';
-  const removeGitArgs = ['rimraf', './.git'];
-
-  const isExecFromPnpm = packageManager === 'pnpm';
-  if (isExecFromPnpm) {
-    executeModule = 'pnpm';
-    removeGitArgs.unshift('dlx');
-  }
-
   const spinner = ora({
     text: 'Initializing repository...',
     prefixText: TAGS.PROCESS,
   }).start();
 
   try {
-    execCommand(executeModule, removeGitArgs, { silent: true });
     execCommand('git', ['init'], { silent: true });
     execCommand('git', ['add', '.'], { silent: true });
     execCommand('git', ['commit', '-m', 'initial commit'], { silent: true });
@@ -274,9 +277,9 @@ function showCompletionMessage(appName, template) {
 }
 
 async function run(appName, packageInfo, template) {
-  await validateTemplate(template, packageInfo);
+  validateTemplate(template, packageInfo);
 
-  cloneRepository(appName, template);
+  await downloadAndExtractTemplate(appName, template);
   installDependencies();
   initializeGitRepository();
   showCompletionMessage(appName, template);
@@ -297,7 +300,7 @@ function init() {
     .arguments('[app-name]')
     .usage('<app-name> [options]')
     .option(
-      '-t, --template [next, ethereum, react, astro, extension]',
+      '-t, --template [next, react, ethereum, astro, extension, ui]',
       'template name',
       'next'
     )
