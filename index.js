@@ -3,7 +3,12 @@
 'use strict';
 
 import { resolve as _resolve, join } from 'node:path';
-import { readFileSync, writeFileSync, mkdirSync, createWriteStream } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  createWriteStream,
+} from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
@@ -13,6 +18,7 @@ import chalk from 'chalk';
 import { sync } from 'cross-spawn';
 import ora from 'ora';
 import { x as tarExtract } from 'tar';
+import * as p from '@clack/prompts';
 
 const createLog = (tag) => (message) => console.log(`${tag} ${message}`);
 
@@ -276,6 +282,49 @@ function showCompletionMessage(appName, template) {
   console.log();
 }
 
+async function promptForMissingOptions(appName, template) {
+  const results = { appName, template };
+
+  if (!appName) {
+    p.intro(chalk.bgMagentaBright.black.bold(' create stylish app '));
+
+    results.appName = await p.text({
+      message: 'What is your project name?',
+      placeholder: 'stylish-app',
+      validate: (value) => {
+        if (!value) return 'Project name is required';
+        if (!/^[a-z0-9-_]+$/i.test(value)) return 'Invalid project name';
+      },
+    });
+
+    if (p.isCancel(results.appName)) {
+      p.cancel('Operation cancelled.');
+      process.exit(0);
+    }
+  }
+
+  if (!template) {
+    results.template = await p.select({
+      message: 'Which stylish would you like to use?',
+      options: [
+        { value: 'next', label: 'next-app', hint: 'Next.js' },
+        { value: 'react', label: 'react-app', hint: 'React (Vite)' },
+        { value: 'astro', label: 'astro-app', hint: 'Astro' },
+        { value: 'ethereum', label: 'ethereum-dapp', hint: 'Ethereum DApp' },
+        { value: 'extension', label: 'extension', hint: 'Chrome Extension' },
+        { value: 'ui', label: 'ui-kit', hint: 'UI Kit' },
+      ],
+    });
+
+    if (p.isCancel(results.template)) {
+      p.cancel('Operation cancelled.');
+      process.exit(0);
+    }
+  }
+
+  return results;
+}
+
 async function run(appName, packageInfo, template) {
   validateTemplate(template, packageInfo);
 
@@ -285,7 +334,7 @@ async function run(appName, packageInfo, template) {
   showCompletionMessage(appName, template);
 }
 
-function init() {
+async function init() {
   let appName;
 
   const packageInfo = JSON.parse(
@@ -298,11 +347,10 @@ function init() {
     .description(chalk.cyan('Create Stylish JavaScript web app'))
     .version(packageInfo.version, '-v, --version')
     .arguments('[app-name]')
-    .usage('<app-name> [options]')
+    .usage('[app-name] [options]')
     .option(
-      '-t, --template [next, react, ethereum, astro, extension, ui]',
-      'template name',
-      'next'
+      '-t, --template <template>',
+      'template name (next, react, ethereum, astro, extension, ui)'
     )
     .action((name) => {
       appName = name;
@@ -310,24 +358,23 @@ function init() {
     .allowUnknownOption()
     .parse(process.argv);
 
-  if (typeof appName === 'undefined') {
-    console.error('Please specify a project name:');
-    console.log(`  ${chalk.cyan(program.name())} ${chalk.green('<app-name>')}`);
-    console.log();
-    console.log('For example:');
-    console.log(
-      `  ${chalk.cyan(program.name())} ${chalk.green('stylish-app')}`
-    );
-    console.log();
-    console.log(
-      `Run ${chalk.cyan(`${program.name()} --help`)} to see all options.`
+  const options = program.opts();
+
+  if (options.template && !TEMPLATE_MAP[options.template]) {
+    console.error(
+      chalk.red(
+        `Invalid template: ${chalk.bold(
+          options.template
+        )}\nAvailable templates: ${Object.keys(TEMPLATE_MAP).join(', ')}`
+      )
     );
     process.exit(1);
   }
 
-  const options = program.opts();
+  const { appName: finalAppName, template: finalTemplate } =
+    await promptForMissingOptions(appName, options.template);
 
-  run(appName, packageInfo, options.template);
+  await run(finalAppName, packageInfo, finalTemplate);
 }
 
 init();
