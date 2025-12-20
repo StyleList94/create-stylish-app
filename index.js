@@ -41,8 +41,8 @@ const TEMPLATE_MAP = {
   ui: 'ui-kit',
 };
 
-const TARBALL_URL =
-  'https://codeload.github.com/StyleList94/stylish-app-kit/tar.gz/main';
+const TEMPLATE_VERSION = 'v1.0.0-appletini';
+const TARBALL_URL = `https://codeload.github.com/StyleList94/stylish-app-kit/tar.gz/${TEMPLATE_VERSION}`;
 
 function isValidTemplate(template) {
   return template in TEMPLATE_MAP;
@@ -167,7 +167,8 @@ async function downloadTarball() {
 
 async function extractTemplate(tarFile, template, destPath) {
   const templateDir = TEMPLATE_MAP[template];
-  const prefix = `stylish-app-kit-main/templates/${templateDir}/`;
+  const versionDir = TEMPLATE_VERSION.replace(/^v/, '');
+  const prefix = `stylish-app-kit-${versionDir}/templates/${templateDir}/`;
 
   await tarExtract({
     file: tarFile,
