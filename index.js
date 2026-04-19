@@ -41,7 +41,7 @@ const TEMPLATE_MAP = {
   ui: 'ui-kit',
 };
 
-const TEMPLATE_VERSION = 'v1.0.1';
+const TEMPLATE_VERSION = 'v2.0.0-b-52';
 const TARBALL_URL = `https://codeload.github.com/StyleList94/stylish-app-kit/tar.gz/${TEMPLATE_VERSION}`;
 
 function isValidTemplate(template) {
